@@ -57,7 +57,7 @@ if [ -n "${PACKAGE}" ]; then
 fi
 
 if [ -n "${UPLOAD_SYMBOL_FILES}" ]; then
-  rpm -i licence_tool*debuginfo*.rpm
-  cp /usr/lib/debug/opt/tsg/licence_tool/bin/licence_tool.debug /tmp/licence_tool.debuginfo.${CI_COMMIT_SHORT_SHA}
-  sentry-cli upload-dif -t elf /tmp/licence_tool.debuginfo.${CI_COMMIT_SHORT_SHA}
+  rpm -i hasp_update*debuginfo*.rpm
+  cp /usr/lib/debug/opt/tsg/hasp_update/bin/hasp_update.debug /tmp/hasp_update.debuginfo.${CI_COMMIT_SHORT_SHA}
+  sentry-cli upload-dif -t elf /tmp/hasp_update.debuginfo.${CI_COMMIT_SHORT_SHA}
 fi

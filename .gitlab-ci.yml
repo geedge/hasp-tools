@@ -2,7 +2,7 @@ image: "git.mesalab.cn:7443/mesa_platform/build-env:master"
 variables:
   GIT_STRATEGY: "clone"
   BUILD_PADDING_PREFIX: /tmp/padding_for_CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX_PREFIX_PREFIX_PREFIX_PREFIX_PREFIX/
-  INSTALL_PREFIX: "/opt/tsg/licence_tool"
+  INSTALL_PREFIX: "/opt/tsg/hasp_update"
   TESTING_VERSION_BUILD: 0
 
 stages:
@@ -51,7 +51,7 @@ develop_build_debug:
     PULP3_REPO_NAME: tsg-testing-x86_64.el7
     PULP3_DIST_NAME: tsg-testing-x86_64.el7
   artifacts:
-    name: "licence_tool-develop-$CI_COMMIT_REF_NAME-debug"
+    name: "hasp_update-develop-$CI_COMMIT_REF_NAME-debug"
     paths:
       - build/*.rpm
   only:
@@ -69,7 +69,7 @@ develop_build_release:
     PULP3_REPO_NAME: tsg-testing-x86_64.el7
     PULP3_DIST_NAME: tsg-testing-x86_64.el7
   artifacts:
-    name: "licence_tool-develop-$CI_COMMIT_REF_NAME-release"
+    name: "hasp_update-develop-$CI_COMMIT_REF_NAME-release"
     paths:
       - build/*.rpm
   only:
@@ -86,7 +86,7 @@ release_build_debug:
     PULP3_DIST_NAME: tsg-stable-x86_64.el7
   extends: .build_by_travis
   artifacts:
-    name: "licence_tool-install-$CI_COMMIT_REF_NAME-debug"
+    name: "hasp_update-install-$CI_COMMIT_REF_NAME-debug"
     paths:
     - build/*.rpm
   only:
@@ -102,7 +102,7 @@ release_build_release:
     PULP3_DIST_NAME: tsg-stable-x86_64.el7
   extends: .build_by_travis
   artifacts:
-    name: "licence_tool-install-$CI_COMMIT_REF_NAME-release"
+    name: "hasp_update-install-$CI_COMMIT_REF_NAME-release"
     paths:
       - build/*.rpm
   only:

@@ -1,7 +1,7 @@
 ﻿if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(CPACK_PACKAGE_NAME "licence_tool-debug")
+    set(CPACK_PACKAGE_NAME "hasp_update-debug")
 else()
-    set(CPACK_PACKAGE_NAME "licence_tool")
+    set(CPACK_PACKAGE_NAME "hasp_update")
 endif()
 
 message(STATUS "Package: ${CPACK_PACKAGE_NAME}")
@@ -22,9 +22,9 @@ set(CPACK_RPM_DEBUGINFO_PACKAGE on)
 
 # Must uninstall the debug package before install release package
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(CPACK_RPM_PACKAGE_CONFLICTS "licence_tool")
+    set(CPACK_RPM_PACKAGE_CONFLICTS "hasp_update")
 else()
-    set(CPACK_RPM_PACKAGE_CONFLICTS "licence_tool-debug")
+    set(CPACK_RPM_PACKAGE_CONFLICTS "hasp_update-debug")
 endif()
 
 include(CPack)

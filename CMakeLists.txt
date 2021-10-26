@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(licence_tool)
+project(hasp_update)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include(Version)
@@ -14,7 +14,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-	set (CMAKE_INSTALL_PREFIX "/opt/tsg/licence_tool" CACHE PATH "default install path" FORCE )
+	set (CMAKE_INSTALL_PREFIX "/opt/tsg/hasp_update" CACHE PATH "default install path" FORCE )
 endif()
 
 # Global compile options
