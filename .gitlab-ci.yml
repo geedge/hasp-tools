@@ -1,28 +1,35 @@
-image: "git.mesalab.cn:7443/mesa_platform/build-env:master"
 variables:
   GIT_STRATEGY: "clone"
   BUILD_PADDING_PREFIX: /tmp/padding_for_CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX_PREFIX_PREFIX_PREFIX_PREFIX_PREFIX/
   INSTALL_PREFIX: "/opt/tsg/hasp_update"
   TESTING_VERSION_BUILD: 0
+  BUILD_IMAGE_CENTOS7: "git.mesalab.cn:7443/mesa_platform/build-env:master"
+  BUILD_IMAGE_CENTOS8: "git.mesalab.cn:7443/mesa_platform/build-env:rockylinux"
 
 stages:
 - build
 
-.build_by_travis:
+###############################################################################
+# compile use image: build-env:master
+###############################################################################
+
+.build_by_travis_for_centos7:
+  image: $BUILD_IMAGE_CENTOS7
   before_script:
   - mkdir -p $BUILD_PADDING_PREFIX/$CI_PROJECT_NAMESPACE/
   - ln -s $CI_PROJECT_DIR $BUILD_PADDING_PREFIX/$CI_PROJECT_PATH
   - cd $BUILD_PADDING_PREFIX/$CI_PROJECT_PATH
   - chmod +x ./ci/travis.sh
+  - yum install -y elfutils-libelf-devel
   script:
   - yum makecache
   - ./ci/travis.sh
   tags:
   - share
 
-branch_build_debug:
+branch_build_debug_centos7:
   stage: build
-  extends: .build_by_travis
+  extends: .build_by_travis_for_centos7
   variables:
     BUILD_TYPE: Debug
   except:
@@ -30,19 +37,19 @@ branch_build_debug:
     - /^release-.*$/i
     - tags
 
-branch_build_release:
+branch_build_release_centos7:
   stage: build
   variables:
     BUILD_TYPE: RelWithDebInfo
-  extends: .build_by_travis
+  extends: .build_by_travis_for_centos7
   except:
     - /^develop-.*$/i
     - /^release-.*$/i
     - tags
 
-develop_build_debug:
+develop_build_debug_centos7:
   stage: build
-  extends: .build_by_travis
+  extends: .build_by_travis_for_centos7
   variables:
     TESTING_VERSION_BUILD: 1
     UPLOAD_SYMBOL_FILES: 1
@@ -58,9 +65,9 @@ develop_build_debug:
     - /^develop-.*$/i
     - /^release-.*$/i
 
-develop_build_release:
+develop_build_release_centos7:
   stage: build
-  extends: .build_by_travis
+  extends: .build_by_travis_for_centos7
   variables:
     TESTING_VERSION_BUILD: 1
     UPLOAD_SYMBOL_FILES: 1
@@ -76,7 +83,7 @@ develop_build_release:
     - /^develop-.*$/i
     - /^release-.*$/i
 
-release_build_debug:
+release_build_debug_centos7:
   stage: build
   variables:
     UPLOAD_SYMBOL_FILES: 1
@@ -84,7 +91,7 @@ release_build_debug:
     PACKAGE: 1
     PULP3_REPO_NAME: tsg-stable-x86_64.el7
     PULP3_DIST_NAME: tsg-stable-x86_64.el7
-  extends: .build_by_travis
+  extends: .build_by_travis_for_centos7
   artifacts:
     name: "hasp_update-install-$CI_COMMIT_REF_NAME-debug"
     paths:
@@ -92,7 +99,7 @@ release_build_debug:
   only:
     - tags
 
-release_build_release:
+release_build_release_centos7:
   stage: build
   variables:
     BUILD_TYPE: RelWithDebInfo
@@ -100,7 +107,113 @@ release_build_release:
     PACKAGE: 1
     PULP3_REPO_NAME: tsg-stable-x86_64.el7
     PULP3_DIST_NAME: tsg-stable-x86_64.el7
-  extends: .build_by_travis
+  extends: .build_by_travis_for_centos7
+  artifacts:
+    name: "hasp_update-install-$CI_COMMIT_REF_NAME-release"
+    paths:
+      - build/*.rpm
+  only:
+    - tags
+
+###############################################################################
+# compile use image: build-env:rockylinux"
+###############################################################################
+
+.build_by_travis_for_centos8:
+  image: $BUILD_IMAGE_CENTOS8
+  before_script:
+  - mkdir -p $BUILD_PADDING_PREFIX/$CI_PROJECT_NAMESPACE/
+  - ln -s $CI_PROJECT_DIR $BUILD_PADDING_PREFIX/$CI_PROJECT_PATH
+  - cd $BUILD_PADDING_PREFIX/$CI_PROJECT_PATH
+  - chmod +x ./ci/travis.sh
+  - yum install -y elfutils-libelf-devel
+  script:
+  - yum makecache
+  - ./ci/travis.sh
+  tags:
+  - share
+
+branch_build_debug_centos8:
+  stage: build
+  extends: .build_by_travis_for_centos8
+  variables:
+    BUILD_TYPE: Debug
+  except:
+    - /^develop-.*$/i
+    - /^release-.*$/i
+    - tags
+
+branch_build_release_centos8:
+  stage: build
+  variables:
+    BUILD_TYPE: RelWithDebInfo
+  extends: .build_by_travis_for_centos8
+  except:
+    - /^develop-.*$/i
+    - /^release-.*$/i
+    - tags
+
+develop_build_debug_centos8:
+  stage: build
+  extends: .build_by_travis_for_centos8
+  variables:
+    TESTING_VERSION_BUILD: 1
+    UPLOAD_SYMBOL_FILES: 1
+    BUILD_TYPE: Debug
+    PACKAGE: 1
+    PULP3_REPO_NAME: tsg-testing-x86_64.el8
+    PULP3_DIST_NAME: tsg-testing-x86_64.el8
+  artifacts:
+    name: "hasp_update-develop-$CI_COMMIT_REF_NAME-debug"
+    paths:
+      - build/*.rpm
+  only:
+    - /^develop-.*$/i
+    - /^release-.*$/i
+
+develop_build_release_centos8:
+  stage: build
+  extends: .build_by_travis_for_centos8
+  variables:
+    TESTING_VERSION_BUILD: 1
+    UPLOAD_SYMBOL_FILES: 1
+    BUILD_TYPE: RelWithDebInfo
+    PACKAGE: 1
+    PULP3_REPO_NAME: tsg-testing-x86_64.el8
+    PULP3_DIST_NAME: tsg-testing-x86_64.el8
+  artifacts:
+    name: "hasp_update-develop-$CI_COMMIT_REF_NAME-release"
+    paths:
+      - build/*.rpm
+  only:
+    - /^develop-.*$/i
+    - /^release-.*$/i
+
+release_build_debug_centos8:
+  stage: build
+  variables:
+    UPLOAD_SYMBOL_FILES: 1
+    BUILD_TYPE: Debug
+    PACKAGE: 1
+    PULP3_REPO_NAME: tsg-stable-x86_64.el8
+    PULP3_DIST_NAME: tsg-stable-x86_64.el8
+  extends: .build_by_travis_for_centos8
+  artifacts:
+    name: "hasp_update-install-$CI_COMMIT_REF_NAME-debug"
+    paths:
+    - build/*.rpm
+  only:
+    - tags
+
+release_build_release_centos8:
+  stage: build
+  variables:
+    BUILD_TYPE: RelWithDebInfo
+    UPLOAD_SYMBOL_FILES: 1
+    PACKAGE: 1
+    PULP3_REPO_NAME: tsg-stable-x86_64.el8
+    PULP3_DIST_NAME: tsg-stable-x86_64.el8
+  extends: .build_by_travis_for_centos8
   artifacts:
     name: "hasp_update-install-$CI_COMMIT_REF_NAME-release"
     paths:
