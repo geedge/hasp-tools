@@ -33,7 +33,6 @@ env | sort
 : "${COMPILER_IS_GNUCXX:=OFF}"
 
 # Install dependency from YUM
-yum install -y libasan
 
 if [ $ASAN_OPTION ];then
   source /opt/rh/devtoolset-7/enable
@@ -58,6 +57,6 @@ fi
 
 if [ -n "${UPLOAD_SYMBOL_FILES}" ]; then
   rpm -i hasp_update*debuginfo*.rpm
-  cp /usr/lib/debug/opt/tsg/hasp_update/bin/hasp_update.debug /tmp/hasp_update.debuginfo.${CI_COMMIT_SHORT_SHA}
+  cp /usr/lib/debug/opt/tsg/hasp_update/bin/hasp_update*debug /tmp/hasp_update.debuginfo.${CI_COMMIT_SHORT_SHA}
   sentry-cli upload-dif -t elf /tmp/hasp_update.debuginfo.${CI_COMMIT_SHORT_SHA}
 fi
