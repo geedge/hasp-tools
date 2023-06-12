@@ -56,7 +56,7 @@ if [ -n "${PACKAGE}" ]; then
 fi
 
 if [ -n "${UPLOAD_SYMBOL_FILES}" ]; then
-  rpm -i hasp_update*debuginfo*.rpm
-  cp /usr/lib/debug/opt/tsg/hasp_update/bin/hasp_update*debug /tmp/hasp_update.debuginfo.${CI_COMMIT_SHORT_SHA}
-  sentry-cli upload-dif -t elf /tmp/hasp_update.debuginfo.${CI_COMMIT_SHORT_SHA}
+  rpm -i hasp-tools*debuginfo*.rpm
+  cp /usr/lib/debug/opt/tsg/hasp-tools/bin/hasp-tools*debug /tmp/hasp-tools.debuginfo.${CI_COMMIT_SHORT_SHA}
+  sentry-cli upload-dif -t elf /tmp/hasp-tools.debuginfo.${CI_COMMIT_SHORT_SHA}
 fi

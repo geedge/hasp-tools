@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(hasp_update)
+project(hasp-tools)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include(Version)
@@ -14,7 +14,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-	set (CMAKE_INSTALL_PREFIX "/opt/tsg/hasp_update" CACHE PATH "default install path" FORCE )
+	set (CMAKE_INSTALL_PREFIX "/opt/tsg/hasp-tools" CACHE PATH "default install path" FORCE )
 endif()
 
 # Global compile options
@@ -58,3 +58,5 @@ add_custom_target("install-program" COMMAND ${CMAKE_COMMAND} ARGS -DCOMPONENT=Pr
 add_custom_target("install-profile" COMMAND ${CMAKE_COMMAND} ARGS -DCOMPONENT=Profile -P cmake_install.cmake)
 
 add_subdirectory(platform)
+
+install(FILES conf/hasp-tools.conf DESTINATION /etc/ld.so.conf.d/ COMPONENT Profile)
