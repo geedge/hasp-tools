@@ -1,0 +1,2 @@
+%systemd_post hasp_monitor.service
+/sbin/ldconfig

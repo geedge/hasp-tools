@@ -1,0 +1,1 @@
+install(FILES service/hasp_monitor.service DESTINATION /usr/lib/systemd/system/ COMPONENT Program)

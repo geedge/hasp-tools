@@ -8,7 +8,8 @@ extern "C"
 
 #include <stdint.h>
 
-void hasp_verify(uint64_t feature_id, uint64_t interval_s);
+void hasp_monitor(uint64_t feature_id, uint64_t interval);
+void hasp_verify(uint64_t feature_id);
 
 #ifdef __cpluscplus
 }

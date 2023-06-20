@@ -1,6 +1,0 @@
-add_definitions(-DENABLD_LOG_FIEL)
-add_executable(hasp_verify ${CMAKE_SOURCE_DIR}/platform/src/hasp_verify.c ${CMAKE_SOURCE_DIR}/platform/test/hasp_verify_test.c)
-target_include_directories(hasp_verify PUBLIC ${CMAKE_SOURCE_DIR}/platform/include/)
-target_link_libraries(hasp_verify pthread)
-target_link_libraries(hasp_verify ${CMAKE_SOURCE_DIR}/lib/libhasp_linux_x86_64_25743.a)
-install(TARGETS hasp_verify RUNTIME DESTINATION bin COMPONENT Program)

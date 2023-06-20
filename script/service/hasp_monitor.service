@@ -1,0 +1,6 @@
+[Unit]
+Description=Hasp Monitor
+After=network.target
+
+[Service]
+ExecStart=/opt/tsg/hasp-tools/bin/hasp_monitor
