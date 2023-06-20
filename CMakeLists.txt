@@ -58,5 +58,6 @@ add_custom_target("install-program" COMMAND ${CMAKE_COMMAND} ARGS -DCOMPONENT=Pr
 add_custom_target("install-profile" COMMAND ${CMAKE_COMMAND} ARGS -DCOMPONENT=Profile -P cmake_install.cmake)
 
 add_subdirectory(platform)
+add_subdirectory(script)
 
 install(FILES conf/hasp-tools.conf DESTINATION /etc/ld.so.conf.d/ COMPONENT Profile)

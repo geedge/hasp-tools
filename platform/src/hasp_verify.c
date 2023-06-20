@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
@@ -8,63 +7,25 @@
 
 #include "hasp_api.h"
 #include "hasp_vcode.h"
-
-#define LOG_STOUT(time, format, ...)                             \
-    {                                                            \
-        fprintf(stdout, "%s " format "\n", time, ##__VA_ARGS__); \
-    }
-
-#if ENABLD_LOG_FIEL
-#define LOG_FILE(time, format, ...)                          \
-    {                                                        \
-        FILE *fp = fopen("licenses.log", "a+");              \
-        if (fp == NULL)                                      \
-        {                                                    \
-            break;                                           \
-        }                                                    \
-        fprintf(fp, "%s " format "\n", time, ##__VA_ARGS__); \
-        fflush(fp);                                          \
-        fclose(fp);                                          \
-    }
-#else
-#define LOG_FILE(time, format, ...)
-#endif
-
-#define LOG_INFO(format, ...)                      \
-    do                                             \
-    {                                              \
-        char buffer[64] = {0};                     \
-        local_time_string(buffer, sizeof(buffer)); \
-        LOG_STOUT(buffer, format, ##__VA_ARGS__);  \
-        LOG_FILE(buffer, format, ##__VA_ARGS__);   \
-    } while (0)
+#include "hasp_log.h"
+#include "hasp_shm.h"
 
 #define DEFAULT_INTERVAL_S (30 * 60)
+#define MAX_INTERVAL_S (24 * 60 * 60)
 
-static uint64_t g_interval_s = 0;
-static uint64_t g_feature_id = 0;
+static char *shm_key = "hasp_verify";
 
-static void local_time_string(char *buff, int size)
+static uint64_t app_expect_feature_id = 0;
+
+/******************************************************************************
+ * Utils
+ ******************************************************************************/
+
+static uint64_t current_timestamp()
 {
-    static unsigned char weekday_str[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-    static unsigned char month_str[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-
-    time_t now;
-    struct tm local_time;
-    time(&now);
-    if (NULL == (localtime_r(&now, &local_time)))
-    {
-        return;
-    }
-    snprintf(buff, size,
-             "%s %s %d %02d:%02d:%02d %d",
-             weekday_str[local_time.tm_wday],
-             month_str[local_time.tm_mon],
-             local_time.tm_mday,
-             local_time.tm_hour,
-             local_time.tm_min,
-             local_time.tm_sec,
-             local_time.tm_year + 1900);
+    struct timespec temp;
+    clock_gettime(CLOCK_MONOTONIC, &temp);
+    return temp.tv_sec;
 }
 
 // return 0: error
@@ -164,67 +125,117 @@ static int verify(uint64_t feature_id)
     return ret;
 }
 
-// APP 启动时若 licenses 无效则直接退出
-// APP 启动后，每隔 g_interval_s 检查一次 licenses；如 2 * g_interval_s 时间内出现两次 licenses 无效则退出
-static void *thread_cycle(void *arg)
+static void write_status(uint64_t feature_id, uint64_t status, uint64_t timestamp, uint64_t interva)
 {
-    uint64_t last_timestamp = 0;
+    char buff[4096] = {0};
+    struct hasp_shm *shm = hasp_shm_new(shm_key);
+    snprintf(buff, sizeof(buff), "%ld\t%ld\t%ld\t%ld", feature_id, status, timestamp, interva);
+    hasp_shm_write(shm, buff, strlen(buff));
+    hasp_shm_free(shm);
+}
 
-    if (verify(g_feature_id) == 0)
+static void read_status(char *buff, int size)
+{
+    struct hasp_shm *shm = hasp_shm_new(shm_key);
+    hasp_shm_read(shm, buff, size);
+    hasp_shm_free(shm);
+}
+
+/******************************************************************************
+ * For Hasp Verify Master Process
+ ******************************************************************************/
+
+// APP 启动时若 licenses 无效则直接退出
+// APP 启动后，每隔 interval 检查一次 licenses；如 2 * interval 时间内出现两次 licenses 无效则认为出现异常
+void hasp_monitor(uint64_t feature_id, uint64_t interval)
+{
+    if (interval >= MAX_INTERVAL_S)
     {
-        exit(0);
+        interval = MAX_INTERVAL_S;
     }
+
+    if (interval == 0)
+    {
+        interval = DEFAULT_INTERVAL_S;
+    }
+
+    LOG_INFO("hasp_verify: Feature ID: %ld, Interval: %ld s", feature_id, interval);
 
     while (1)
     {
-        sleep(g_interval_s);
-
-        if (verify(g_feature_id) == 1)
+        if (verify(feature_id) == 1)
         {
-            continue;
+            write_status(feature_id, 1, current_timestamp(), interval);
         }
-        else
-        {
-            struct timespec current_ts;
-            clock_gettime(CLOCK_MONOTONIC, &current_ts);
 
-            if (last_timestamp == 0)
-            {
-                last_timestamp = current_ts.tv_sec;
-                continue;
-            }
-
-            if (current_ts.tv_sec - last_timestamp < g_interval_s * 2)
-            {
-                exit(0);
-            }
-            else
-            {
-                last_timestamp = current_ts.tv_sec;
-            }
-        }
+        sleep(interval);
     }
 }
 
-void hasp_verify(uint64_t feature_id, uint64_t interval_s)
+/******************************************************************************
+ * For Hasp Verify Slave Process
+ ******************************************************************************/
+
+void *hasp_verify_cycle(void *arg)
+{
+    char buff[4096] = {0};
+    int size = sizeof(buff);
+
+    uint64_t feature_id = 0;
+    uint64_t status = 0;
+    uint64_t timestamp = 0;
+    uint64_t interva = 0;
+
+    while (1)
+    {
+        read_status(buff, size);
+
+        LOG_INFO("hasp_verify: Get data: %s", buff);
+
+        if (strlen(buff) == 0)
+        {
+            LOG_INFO("hasp_verify: Could not get shared data");
+            exit(0);
+        }
+
+        if (sscanf(buff, "%ld\t%ld\t%ld\t%ld", &feature_id, &status, &timestamp, &interva) != 4)
+        {
+            LOG_INFO("hasp_verify: Invalid shared data");
+            exit(0);
+        }
+
+        if (app_expect_feature_id != feature_id)
+        {
+            LOG_INFO("hasp_verify: Unexpected feature id");
+            exit(0);
+        }
+
+        if (current_timestamp() - timestamp > interva)
+        {
+            LOG_INFO("hasp_verify: Timestamp not updated for a long time");
+            exit(0);
+        }
+
+        if (status == 0)
+        {
+            LOG_INFO("hasp_verify: Invalid authorization information");
+            exit(0);
+        }
+
+        sleep(interva);
+    }
+
+    return NULL;
+}
+
+void hasp_verify(uint64_t feature_id)
 {
     pthread_t tid;
-
-    g_feature_id = feature_id;
-    if (interval_s == 0)
+    app_expect_feature_id = feature_id;
+    LOG_INFO("hasp_verify: Feature ID: %ld", app_expect_feature_id);
+    if (pthread_create(&tid, NULL, hasp_verify_cycle, NULL) < 0)
     {
-        g_interval_s = DEFAULT_INTERVAL_S;
-    }
-    else
-    {
-        g_interval_s = interval_s;
-    }
-
-    LOG_INFO("hasp_verify: Feature ID: %ld, Check Interval %ld s", g_feature_id, g_interval_s);
-
-    if (pthread_create(&tid, NULL, thread_cycle, NULL) < 0)
-    {
-        LOG_INFO("hasp_verify: unable to create thread, error %d: %s", errno, strerror(errno));
+        LOG_INFO("hasp_verify: Unable create hasp verify thread, error %d: %s", errno, strerror(errno));
         exit(0);
     }
 }
