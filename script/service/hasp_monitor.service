@@ -4,3 +4,6 @@ After=network.target
 
 [Service]
 ExecStart=/opt/tsg/hasp-tools/bin/hasp_monitor
+
+[Install]
+WantedBy=multi-user.target
