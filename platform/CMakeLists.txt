@@ -6,7 +6,7 @@ target_link_libraries(hasp_update ${CMAKE_SOURCE_DIR}/lib/libhasp_linux_x86_64_2
 install(TARGETS hasp_update RUNTIME DESTINATION bin COMPONENT Program)
 
 # compile lib hasp-tools
-add_library(hasp-tools SHARED src/hasp_verify.c src/hasp_shm.c)
+add_library(hasp-tools SHARED src/hasp_verify.c)
 target_include_directories(hasp-tools PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 target_link_libraries(hasp-tools pthread rt)
 target_link_libraries(hasp-tools ${CMAKE_SOURCE_DIR}/lib/libhasp_linux_x86_64_25743.a)
