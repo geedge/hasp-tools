@@ -9,38 +9,7 @@ extern "C"
 #include <time.h>
 #include <stdio.h>
 
-#if ENABLD_LOG_FIEL
-#define LOG_FILE(prefix, format, ...)                          \
-    {                                                          \
-        FILE *fp = fopen("licenses.log", "a+");                \
-        if (fp == NULL)                                        \
-        {                                                      \
-            break;                                             \
-        }                                                      \
-        fprintf(fp, "%s " format "\n", prefix, ##__VA_ARGS__); \
-        fflush(fp);                                            \
-        fclose(fp);                                            \
-    }
-#else
-#define LOG_FILE(prefix, format, ...)
-#endif
-
-#define LOG_STOUT(prefix, format, ...)                             \
-    {                                                              \
-        fprintf(stderr, "%s " format "\n", prefix, ##__VA_ARGS__); \
-    }
-
-#define LOG_INFO(format, ...)                                                  \
-    do                                                                         \
-    {                                                                          \
-        char buffer[128] = {0};                                                \
-        int n = local_time_string(buffer, sizeof(buffer));                     \
-        snprintf(buffer + n, sizeof(buffer) - n, " tid: %ld", pthread_self()); \
-        LOG_STOUT(buffer, format, ##__VA_ARGS__);                              \
-        LOG_FILE(buffer, format, ##__VA_ARGS__);                               \
-    } while (0)
-
-static int local_time_string(char *buff, int size)
+static inline int local_time_string(char *buff, int size)
 {
     static unsigned char weekday_str[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
     static unsigned char month_str[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
@@ -62,6 +31,64 @@ static int local_time_string(char *buff, int size)
                     local_time.tm_sec,
                     local_time.tm_year + 1900);
 }
+
+enum log_level
+{
+    LOG_LEVEL_DEBUG = 0x1,
+    LOG_LEVEL_INFO = 0x2,
+    LOG_LEVEL_ERROR = 0x4,
+};
+
+static int default_log_level = LOG_LEVEL_INFO;
+
+#define LOG_LEVEL_SET_DEBUG()                \
+    {                                        \
+        default_log_level = LOG_LEVEL_DEBUG; \
+    }
+
+#define LOG_LEVEL_SET_INFO()                \
+    {                                       \
+        default_log_level = LOG_LEVEL_INFO; \
+    }
+
+#define LOG_LEVEL_SET_ERROR()                \
+    {                                        \
+        default_log_level = LOG_LEVEL_ERROR; \
+    }
+
+#define LOG_STDERR(level, format, ...)                                                                    \
+    {                                                                                                     \
+        char temp_buffer[128] = {0};                                                                      \
+        local_time_string(temp_buffer, sizeof(temp_buffer));                                              \
+        fprintf(stderr, "%s %s tid:%ld " format "\n", temp_buffer, level, pthread_self(), ##__VA_ARGS__); \
+    }
+
+#define LOG_DEBUG(format, ...)                            \
+    do                                                    \
+    {                                                     \
+        if (default_log_level <= LOG_LEVEL_DEBUG)         \
+        {                                                 \
+            LOG_STDERR("[DEBUG]", format, ##__VA_ARGS__); \
+        }                                                 \
+    } while (0)
+
+#define LOG_INFO(format, ...)                            \
+    do                                                   \
+    {                                                    \
+        if (default_log_level <= LOG_LEVEL_INFO)         \
+        {                                                \
+            LOG_STDERR("[INFO]", format, ##__VA_ARGS__); \
+        }                                                \
+    } while (0)
+
+#define LOG_ERROR(format, ...)                            \
+    do                                                    \
+    {                                                     \
+        if (default_log_level <= LOG_LEVEL_ERROR)         \
+        {                                                 \
+            LOG_STDERR("[ERROR]", format, ##__VA_ARGS__); \
+        }                                                 \
+    } while (0)
 
 #ifdef __cpluscplus
 }
