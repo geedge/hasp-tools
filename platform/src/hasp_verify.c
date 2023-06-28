@@ -568,44 +568,47 @@ static void *hasp_monitor_cycle(void *arg)
     signal(SIGUSR1, signal_handler);
     signal(SIGUSR2, signal_handler);
 
-    hasp_handle_t handle;
-    hasp_status_t status = hasp_login(hasp_monitor_feature_id, (hasp_vendor_code_t)vendor_code, &handle);
-    if (status != HASP_STATUS_OK)
-    {
-        log_hasp_status(status);
-        goto error_out;
-    }
-
     while (1)
     {
-        status = encrypt_decrypt(handle);
-        if (status == HASP_STATUS_OK)
+        hasp_handle_t handle;
+        hasp_status_t status = hasp_login(hasp_monitor_feature_id, (hasp_vendor_code_t)vendor_code, &handle);
+        if (status != HASP_STATUS_OK)
         {
-            memset(&data, 0, sizeof(data));
-            data.feature_id = hasp_monitor_feature_id;
-            data.status = 1;
-            data.timestamp = current_timestamp();
-            data.interval = hasp_monitor_interval;
-            if (hasp_monitor_write(&data) == 0)
+            goto error_logout;
+        }
+
+        while (1)
+        {
+            status = encrypt_decrypt(handle);
+            if (status == HASP_STATUS_OK)
             {
-                LOG_DEBUG("hasp_monitor: Set feature_id: %ld, timestamp: %ld, interval: %ld, status: %ld", data.feature_id, data.timestamp, data.interval, data.status);
+                memset(&data, 0, sizeof(data));
+                data.feature_id = hasp_monitor_feature_id;
+                data.status = 1;
+                data.timestamp = current_timestamp();
+                data.interval = hasp_monitor_interval;
+                if (hasp_monitor_write(&data) == 0)
+                {
+                    LOG_DEBUG("hasp_monitor: Set feature_id: %ld, timestamp: %ld, interval: %ld, status: %ld", data.feature_id, data.timestamp, data.interval, data.status);
+                }
+                else
+                {
+                    // continue while loop
+                }
             }
             else
             {
-                // continue while loop
+                goto error_logout;
             }
-        }
-        else
-        {
-            log_hasp_status(status);
-            // continue while loop
+
+            sleep(hasp_monitor_interval);
         }
 
-        sleep(hasp_monitor_interval);
+    error_logout:
+        log_hasp_status(status);
+        hasp_logout(handle);
+        sleep(1);
     }
-
-error_out:
-    hasp_logout(handle);
 
     return NULL;
 }
