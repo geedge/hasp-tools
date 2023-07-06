@@ -574,7 +574,9 @@ static void *hasp_monitor_cycle(void *arg)
         hasp_status_t status = hasp_login(hasp_monitor_feature_id, (hasp_vendor_code_t)vendor_code, &handle);
         if (status != HASP_STATUS_OK)
         {
-            goto error_logout;
+            log_hasp_status(status);
+            sleep(1);
+            continue;
         }
 
         while (1)
