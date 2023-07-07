@@ -454,8 +454,23 @@ static hasp_status_t encrypt_decrypt(hasp_handle_t handle)
  * For Hasp Verify Master Process
  ******************************************************************************/
 
-static int hasp_monitor_write(struct shm_data *data)
+static void *hasp_monitor_cycle(void *arg)
 {
+    if (hasp_monitor_interval >= MAX_INTERVAL_S)
+    {
+        hasp_monitor_interval = MAX_INTERVAL_S;
+    }
+
+    if (hasp_monitor_interval == 0)
+    {
+        hasp_monitor_interval = DEFAULT_INTERVAL_S;
+    }
+
+    LOG_INFO("hasp_monitor: Feature ID: %ld, Interval: %ld s", hasp_monitor_feature_id, hasp_monitor_interval);
+
+    signal(SIGUSR1, signal_handler);
+    signal(SIGUSR2, signal_handler);
+
     char path[256];
     char path_old[512];
     char path_new[512];
@@ -471,14 +486,14 @@ static int hasp_monitor_write(struct shm_data *data)
         if (fd < 0)
         {
             LOG_ERROR("hasp_monitor: Could not create shared file '%s', error %d: %s", shm_key, errno, strerror(errno));
-            return -1;
+            return NULL;
         }
 
         if (ftruncate(fd, size) < 0)
         {
             LOG_ERROR("hasp_monitor: Could not truncate shared file '%s', error %d: %s", path, errno, strerror(errno));
             shm_unlink(path);
-            return -1;
+            return NULL;
         }
 
         void *addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, SEEK_SET);
@@ -486,7 +501,7 @@ static int hasp_monitor_write(struct shm_data *data)
         {
             LOG_ERROR("hasp_monitor: Could not mmap shared file '%s', error %d: %s", path, errno, strerror(errno));
             shm_unlink(path);
-            return -1;
+            return NULL;
         }
 
         memset(addr, 0, size);
@@ -510,7 +525,7 @@ static int hasp_monitor_write(struct shm_data *data)
         if (fd < 0)
         {
             LOG_ERROR("hasp_monitor: Could not open shared file '%s', error %d: %s", shm_key, errno, strerror(errno));
-            return -1;
+            return NULL;
         }
     }
     else
@@ -523,13 +538,50 @@ static int hasp_monitor_write(struct shm_data *data)
     {
         LOG_ERROR("hasp_monitor: Could not mmap shared file '%s', error %d: %s", shm_key, errno, strerror(errno));
         shm_unlink(shm_key);
-        return -1;
+        return NULL;
     }
 
-    ATOMIC_SET(&shm->feature_id, data->feature_id);
-    ATOMIC_SET(&shm->status, data->status);
-    ATOMIC_SET(&shm->timestamp, data->timestamp);
-    ATOMIC_SET(&shm->interval, data->interval);
+    while (1)
+    {
+        hasp_handle_t handle;
+        hasp_status_t status = hasp_login(hasp_monitor_feature_id, (hasp_vendor_code_t)vendor_code, &handle);
+        if (status != HASP_STATUS_OK)
+        {
+            log_hasp_status(status);
+            sleep(1);
+            continue;
+        }
+        else
+        {
+            LOG_INFO("hasp_monitor: Login success");
+        }
+
+        while (1)
+        {
+            status = encrypt_decrypt(handle);
+            if (status == HASP_STATUS_OK)
+            {
+                uint64_t timestamp = current_timestamp();
+                ATOMIC_SET(&shm->feature_id, hasp_monitor_feature_id);
+                ATOMIC_SET(&shm->status, 1);
+                ATOMIC_SET(&shm->timestamp, timestamp);
+                ATOMIC_SET(&shm->interval, hasp_monitor_interval);
+
+                LOG_DEBUG("hasp_monitor: Set feature_id: %ld, timestamp: %ld, interval: %ld, status: %ld", hasp_monitor_feature_id, timestamp, hasp_monitor_interval, 1LU);
+            }
+            else
+            {
+                goto error_logout;
+            }
+
+            sleep(hasp_monitor_interval);
+        }
+
+    error_logout:
+        log_hasp_status(status);
+        hasp_logout(handle);
+        sleep(1);
+    }
 
     /*
      * MAP_SHARED
@@ -545,72 +597,7 @@ static int hasp_monitor_write(struct shm_data *data)
      * Even if the peer process is still using the object, this is okay.
      * The object will be removed only after all open references are closed.
      */
-    // shm_unlink(shm_key);
-
-    return 0;
-}
-
-static void *hasp_monitor_cycle(void *arg)
-{
-    struct shm_data data;
-    if (hasp_monitor_interval >= MAX_INTERVAL_S)
-    {
-        hasp_monitor_interval = MAX_INTERVAL_S;
-    }
-
-    if (hasp_monitor_interval == 0)
-    {
-        hasp_monitor_interval = DEFAULT_INTERVAL_S;
-    }
-
-    LOG_INFO("hasp_monitor: Feature ID: %ld, Interval: %ld s", hasp_monitor_feature_id, hasp_monitor_interval);
-
-    signal(SIGUSR1, signal_handler);
-    signal(SIGUSR2, signal_handler);
-
-    while (1)
-    {
-        hasp_handle_t handle;
-        hasp_status_t status = hasp_login(hasp_monitor_feature_id, (hasp_vendor_code_t)vendor_code, &handle);
-        if (status != HASP_STATUS_OK)
-        {
-            log_hasp_status(status);
-            sleep(1);
-            continue;
-        }
-
-        while (1)
-        {
-            status = encrypt_decrypt(handle);
-            if (status == HASP_STATUS_OK)
-            {
-                memset(&data, 0, sizeof(data));
-                data.feature_id = hasp_monitor_feature_id;
-                data.status = 1;
-                data.timestamp = current_timestamp();
-                data.interval = hasp_monitor_interval;
-                if (hasp_monitor_write(&data) == 0)
-                {
-                    LOG_DEBUG("hasp_monitor: Set feature_id: %ld, timestamp: %ld, interval: %ld, status: %ld", data.feature_id, data.timestamp, data.interval, data.status);
-                }
-                else
-                {
-                    // continue while loop
-                }
-            }
-            else
-            {
-                goto error_logout;
-            }
-
-            sleep(hasp_monitor_interval);
-        }
-
-    error_logout:
-        log_hasp_status(status);
-        hasp_logout(handle);
-        sleep(1);
-    }
+    shm_unlink(shm_key);
 
     return NULL;
 }
@@ -712,7 +699,7 @@ error_out:
      */
     if (fd > 0)
     {
-        // shm_unlink(shm_key);
+        shm_unlink(shm_key);
     }
 
     free(arg);
