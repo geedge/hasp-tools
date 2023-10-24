@@ -12,7 +12,7 @@
 #include "hasp_vcode.h"
 #include "hasp_log.h"
 
-#define DEFAULT_INTERVAL_S (30 * 60)
+#define DEFAULT_INTERVAL_S (15 * 60)
 #define MAX_INTERVAL_S (24 * 60 * 60)
 
 #ifndef MIN
@@ -541,10 +541,19 @@ static void *hasp_monitor_cycle(void *arg)
         return NULL;
     }
 
+    /*
+     * <feature> <die_at_expiration>
+     * Whether the current session should be terminated if the expiration date of the current Feature has passed. Possible values are:
+     *  0 - Allow the session to continue (default).
+     *  1 - Terminate the session.
+     */
+    const char *scope = "<haspscope>\n"
+                        " <feature die_at_expiration=\"1\" />\n"
+                        "</haspscope>\n";
     while (1)
     {
         hasp_handle_t handle;
-        hasp_status_t status = hasp_login(hasp_monitor_feature_id, (hasp_vendor_code_t)vendor_code, &handle);
+        hasp_status_t status = hasp_login_scope(hasp_monitor_feature_id, scope, (hasp_vendor_code_t)vendor_code, &handle);
         if (status != HASP_STATUS_OK)
         {
             log_hasp_status(status);

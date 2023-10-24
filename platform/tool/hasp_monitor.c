@@ -8,7 +8,6 @@ static void usage(char *cmd)
 {
     fprintf(stderr, "USAGE: %s [OPTIONS]\n", cmd);
     fprintf(stderr, "    -f     -- set feature id\n");
-    fprintf(stderr, "    -i     -- set interval second\n");
     fprintf(stderr, "    -h     -- show help\n");
 }
 
