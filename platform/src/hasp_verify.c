@@ -32,15 +32,13 @@ struct shm_data
 
 static char *shm_key = "hasp_verify";
 
-static uint64_t hasp_monitor_feature_id = 0;
-static uint64_t hasp_monitor_interval = 0;
-
 static unsigned char data[] =
     {
         0x74, 0x65, 0x73, 0x74, 0x20, 0x73, 0x74, 0x72,
         0x69, 0x6E, 0x67, 0x20, 0x31, 0x32, 0x33, 0x34};
 
 static unsigned int datalen = sizeof(data);
+static unsigned int need_stop = 0;
 
 /******************************************************************************
  * Utils
@@ -56,6 +54,30 @@ static void signal_handler(int signo)
     if (signo == SIGUSR2)
     {
         LOG_LEVEL_SET_INFO();
+    }
+
+    if (signo == SIGINT)
+    {
+        LOG_INFO("hasp_monitor: recv SIGINT, stop");
+        need_stop = 1;
+    }
+
+    if (signo == SIGTERM)
+    {
+        LOG_INFO("hasp_monitor: recv SIGTERM, stop");
+        need_stop = 1;
+    }
+
+    if (signo == SIGABRT)
+    {
+        LOG_INFO("hasp_monitor: recv SIGABRT, stop");
+        need_stop = 1;
+    }
+
+    if (signo == SIGSEGV)
+    {
+        LOG_INFO("hasp_monitor: recv SIGSEGV, stop");
+        need_stop = 1;
     }
 }
 
@@ -454,8 +476,11 @@ static hasp_status_t encrypt_decrypt(hasp_handle_t handle)
  * For Hasp Verify Master Process
  ******************************************************************************/
 
-static void *hasp_monitor_cycle(void *arg)
+void hasp_monitor(uint64_t feature_id, uint64_t interval)
 {
+    uint64_t hasp_monitor_feature_id = feature_id;
+    uint64_t hasp_monitor_interval = interval;
+
     if (hasp_monitor_interval >= MAX_INTERVAL_S)
     {
         hasp_monitor_interval = MAX_INTERVAL_S;
@@ -470,6 +495,10 @@ static void *hasp_monitor_cycle(void *arg)
 
     signal(SIGUSR1, signal_handler);
     signal(SIGUSR2, signal_handler);
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+    signal(SIGABRT, signal_handler);
+    signal(SIGSEGV, signal_handler);
 
     char path[256];
     char path_old[512];
@@ -486,14 +515,14 @@ static void *hasp_monitor_cycle(void *arg)
         if (fd < 0)
         {
             LOG_ERROR("hasp_monitor: Could not create shared file '%s', error %d: %s", shm_key, errno, strerror(errno));
-            return NULL;
+            return;
         }
 
         if (ftruncate(fd, size) < 0)
         {
             LOG_ERROR("hasp_monitor: Could not truncate shared file '%s', error %d: %s", path, errno, strerror(errno));
             shm_unlink(path);
-            return NULL;
+            return;
         }
 
         void *addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, SEEK_SET);
@@ -501,7 +530,7 @@ static void *hasp_monitor_cycle(void *arg)
         {
             LOG_ERROR("hasp_monitor: Could not mmap shared file '%s', error %d: %s", path, errno, strerror(errno));
             shm_unlink(path);
-            return NULL;
+            return;
         }
 
         memset(addr, 0, size);
@@ -525,7 +554,7 @@ static void *hasp_monitor_cycle(void *arg)
         if (fd < 0)
         {
             LOG_ERROR("hasp_monitor: Could not open shared file '%s', error %d: %s", shm_key, errno, strerror(errno));
-            return NULL;
+            return;
         }
     }
     else
@@ -538,7 +567,7 @@ static void *hasp_monitor_cycle(void *arg)
     {
         LOG_ERROR("hasp_monitor: Could not mmap shared file '%s', error %d: %s", shm_key, errno, strerror(errno));
         shm_unlink(shm_key);
-        return NULL;
+        return;
     }
 
     /*
@@ -550,7 +579,7 @@ static void *hasp_monitor_cycle(void *arg)
     const char *scope = "<haspscope>\n"
                         " <feature die_at_expiration=\"1\" />\n"
                         "</haspscope>\n";
-    while (1)
+    while (!need_stop)
     {
         hasp_handle_t handle;
         hasp_status_t status = hasp_login_scope(hasp_monitor_feature_id, scope, (hasp_vendor_code_t)vendor_code, &handle);
@@ -565,7 +594,7 @@ static void *hasp_monitor_cycle(void *arg)
             LOG_INFO("hasp_monitor: Login success");
         }
 
-        while (1)
+        while (!need_stop)
         {
             status = encrypt_decrypt(handle);
             if (status == HASP_STATUS_OK)
@@ -583,7 +612,10 @@ static void *hasp_monitor_cycle(void *arg)
                 goto error_logout;
             }
 
-            sleep(hasp_monitor_interval);
+            for (int i = 0; !need_stop && i < hasp_monitor_interval; i++)
+            {
+                sleep(1);
+            }
         }
 
     error_logout:
@@ -608,22 +640,7 @@ static void *hasp_monitor_cycle(void *arg)
      */
     shm_unlink(shm_key);
 
-    return NULL;
-}
-
-void hasp_monitor(uint64_t feature_id, uint64_t interval)
-{
-    pthread_t tid;
-    hasp_monitor_feature_id = feature_id;
-    hasp_monitor_interval = interval;
-
-    if (pthread_create(&tid, NULL, hasp_monitor_cycle, NULL) < 0)
-    {
-        LOG_INFO("hasp_monitor: Could not create hasp monitor thread, error %d: %s", errno, strerror(errno));
-        exit(0);
-    }
-
-    pthread_join(tid, NULL);
+    return;
 }
 
 /******************************************************************************
