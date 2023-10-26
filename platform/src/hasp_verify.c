@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
 
 #include "hasp_api.h"
 #include "hasp_vcode.h"
@@ -49,11 +50,13 @@ static void signal_handler(int signo)
     if (signo == SIGUSR1)
     {
         LOG_LEVEL_SET_DEBUG();
+        LOG_INFO("hasp_monitor: recv SIGUSR1");
     }
 
     if (signo == SIGUSR2)
     {
         LOG_LEVEL_SET_INFO();
+        LOG_INFO("hasp_monitor: recv SIGUSR2");
     }
 
     if (signo == SIGINT)
@@ -634,11 +637,11 @@ void hasp_monitor(uint64_t feature_id, uint64_t interval)
     munmap(shm, sizeof(struct shm_data));
 
     /*
-     * Unlink the shared memory object.
-     * Even if the peer process is still using the object, this is okay.
-     * The object will be removed only after all open references are closed.
+     * hasp_monitor 退出时如果执行了 shm_unlink(), shm_key 文件会被释放
+     * hasp_monitor 重启后会创建新的 shm_key 文件，而运行中的 firewall 则使用的是与旧的 shm_key 文件相关的共享内存
+     * 所以此处不执行 shm_unlink()
      */
-    shm_unlink(shm_key);
+    // shm_unlink(shm_key);
 
     return;
 }
@@ -655,6 +658,10 @@ static void *hasp_verify_cycle(void *arg)
     int size = sizeof(struct shm_data);
 
     LOG_INFO("hasp_verify: Expect Feature ID: %ld", expect_feature_id);
+
+    char thread_name[16];
+    snprintf(thread_name, sizeof(thread_name), "hasp");
+    prctl(PR_SET_NAME, (unsigned long long)thread_name, NULL, NULL, NULL);
 
     signal(SIGUSR1, signal_handler);
     signal(SIGUSR2, signal_handler);
@@ -711,22 +718,13 @@ error_out:
      * Updates to the mapping are visible to other processes that map this file, and are carried through to the underlying file.
      * The file may not actually be updated until msync(2) or munmap() is called.
      */
-
     if (addr)
     {
         munmap(addr, size);
         addr = NULL;
     }
 
-    /*
-     * Unlink the shared memory object.
-     * Even if the peer process is still using the object, this is okay.
-     * The object will be removed only after all open references are closed.
-     */
-    if (fd > 0)
-    {
-        shm_unlink(shm_key);
-    }
+    // 此处不执行 shm_unlink(shm_key); 避免 firewall 退出时删除 shm_key 文件
 
     free(arg);
     arg = NULL;
