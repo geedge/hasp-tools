@@ -13,8 +13,9 @@
 #include "hasp_vcode.h"
 #include "hasp_log.h"
 
-#define DEFAULT_INTERVAL_S (15 * 60)
-#define MAX_INTERVAL_S (24 * 60 * 60)
+#define MASTER_VERF_INTRV_S (10 * 60)
+#define DEF_SLAVE_VERF_INTRV_S (15 * 60)
+#define MAX_SLAVE_VERF_INTRV_S (24 * 60 * 60)
 
 #ifndef MIN
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -484,14 +485,14 @@ void hasp_monitor(uint64_t feature_id, uint64_t interval)
     uint64_t hasp_monitor_feature_id = feature_id;
     uint64_t hasp_monitor_interval = interval;
 
-    if (hasp_monitor_interval >= MAX_INTERVAL_S)
+    if (hasp_monitor_interval >= MAX_SLAVE_VERF_INTRV_S)
     {
-        hasp_monitor_interval = MAX_INTERVAL_S;
+        hasp_monitor_interval = MAX_SLAVE_VERF_INTRV_S;
     }
 
     if (hasp_monitor_interval == 0)
     {
-        hasp_monitor_interval = DEFAULT_INTERVAL_S;
+        hasp_monitor_interval = DEF_SLAVE_VERF_INTRV_S;
     }
 
     LOG_INFO("hasp_monitor: Feature ID: %ld, Interval: %ld s", hasp_monitor_feature_id, hasp_monitor_interval);
@@ -614,8 +615,10 @@ void hasp_monitor(uint64_t feature_id, uint64_t interval)
             {
                 goto error_logout;
             }
-
-            for (int i = 0; !need_stop && i < hasp_monitor_interval; i++)
+            /**
+             * STATUS_OK 后, Master Process 固定每隔 MASTER_VERF_INTRV_S 秒检查一次
+            */
+            for (int i = 0; !need_stop && i < MASTER_VERF_INTRV_S; i++)
             {
                 sleep(1);
             }
@@ -695,7 +698,7 @@ static void *hasp_verify_cycle(void *arg)
             goto error_out;
         }
 
-        if (current_timestamp() - temp.timestamp > temp.interval * 2)
+        if (current_timestamp() - temp.timestamp > temp.interval)
         {
             LOG_INFO("hasp_verify: Timestamp not updated for a long time");
             goto error_out;
