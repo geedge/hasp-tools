@@ -14,7 +14,7 @@
 #include "hasp_log.h"
 
 #define MASTER_VERF_INTRV_S (10 * 60)
-#define DEF_SLAVE_VERF_INTRV_S (15 * 60)
+#define DEF_SLAVE_VERF_INTRV_S (3 * 60 * 60)
 #define MAX_SLAVE_VERF_INTRV_S (24 * 60 * 60)
 
 #ifndef MIN
