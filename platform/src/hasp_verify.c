@@ -483,19 +483,19 @@ static hasp_status_t encrypt_decrypt(hasp_handle_t handle)
 void hasp_monitor(uint64_t feature_id, uint64_t interval)
 {
     uint64_t hasp_monitor_feature_id = feature_id;
-    uint64_t hasp_monitor_interval = interval;
+    uint64_t hasp_slave_verf_interval = interval;
 
-    if (hasp_monitor_interval >= MAX_SLAVE_VERF_INTRV_S)
+    if (hasp_slave_verf_interval >= MAX_SLAVE_VERF_INTRV_S)
     {
-        hasp_monitor_interval = MAX_SLAVE_VERF_INTRV_S;
+        hasp_slave_verf_interval = MAX_SLAVE_VERF_INTRV_S;
     }
 
-    if (hasp_monitor_interval == 0)
+    if (hasp_slave_verf_interval == 0)
     {
-        hasp_monitor_interval = DEF_SLAVE_VERF_INTRV_S;
+        hasp_slave_verf_interval = DEF_SLAVE_VERF_INTRV_S;
     }
 
-    LOG_INFO("hasp_monitor: Feature ID: %ld, Interval: %ld s", hasp_monitor_feature_id, hasp_monitor_interval);
+    LOG_INFO("hasp_monitor: Feature ID: %ld, Interval: %ld s", hasp_monitor_feature_id, hasp_slave_verf_interval);
 
     signal(SIGUSR1, signal_handler);
     signal(SIGUSR2, signal_handler);
@@ -607,9 +607,9 @@ void hasp_monitor(uint64_t feature_id, uint64_t interval)
                 ATOMIC_SET(&shm->feature_id, hasp_monitor_feature_id);
                 ATOMIC_SET(&shm->status, 1);
                 ATOMIC_SET(&shm->timestamp, timestamp);
-                ATOMIC_SET(&shm->interval, hasp_monitor_interval);
+                ATOMIC_SET(&shm->interval, hasp_slave_verf_interval);
 
-                LOG_DEBUG("hasp_monitor: Set feature_id: %ld, timestamp: %ld, interval: %ld, status: %ld", hasp_monitor_feature_id, timestamp, hasp_monitor_interval, 1LU);
+                LOG_DEBUG("hasp_monitor: Set feature_id: %ld, timestamp: %ld, slave verf interval: %ld, status: %ld", hasp_monitor_feature_id, timestamp, hasp_slave_verf_interval, 1LU);
             }
             else
             {
