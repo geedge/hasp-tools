@@ -44,6 +44,6 @@ set(GIT_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}-${DESCRIBE}"
 string(REGEX REPLACE "[\\.\\-]" "_" VAR_VERSION "${GIT_VERSION}")
 
 # print information
-message(STATUS "Welcome to Packet Adapter, Version: ${GIT_VERSION}")
+message(STATUS "Welcome to Hasp Tools, Version: ${GIT_VERSION}")
 add_definitions(-DGIT_VERSION=\"${GIT_VERSION}\")
 add_definitions(-DVAR_VERSION=${VAR_VERSION})
