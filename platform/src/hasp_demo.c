@@ -216,7 +216,7 @@ int main(void)
     hasp_size_t fsize;
     unsigned int i;
 
-    printf("A simple demo program for the Sentinel LDK licensing functions\n");
+    printf("A program for the Sentinel LDK licensing functions\n");
     printf("Copyright (C) SafeNet, Inc. All rights reserved.\n\n");
 
     /************************************************************************
