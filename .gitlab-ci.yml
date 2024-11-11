@@ -3,7 +3,7 @@ variables:
   BUILD_PADDING_PREFIX: /tmp/padding_for_CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX_PREFIX_PREFIX_PREFIX_PREFIX_PREFIX/
   INSTALL_PREFIX: "/opt/tsg/hasp-tools"
   TESTING_VERSION_BUILD: 0
-  BUILD_IMAGE_CENTOS7: "git.mesalab.cn:7443/mesa_platform/build-env:master"
+  # BUILD_IMAGE_CENTOS7: "git.mesalab.cn:7443/mesa_platform/build-env:master"
   BUILD_IMAGE_CENTOS8: "git.mesalab.cn:7443/mesa_platform/build-env:rockylinux"
   # aarch64 build image
   BUILD_IMAGE_ROCKY8_AARCH64: "git.mesalab.cn:7443/mesa_platform/build-env:rocky8-aarch64"
@@ -11,112 +11,6 @@ variables:
 
 stages:
 - build
-
-###############################################################################
-# compile use image: build-env:master
-###############################################################################
-
-.build_by_travis_for_centos7:
-  image: $BUILD_IMAGE_CENTOS7
-  before_script:
-  - mkdir -p $BUILD_PADDING_PREFIX/$CI_PROJECT_NAMESPACE/
-  - ln -s $CI_PROJECT_DIR $BUILD_PADDING_PREFIX/$CI_PROJECT_PATH
-  - cd $BUILD_PADDING_PREFIX/$CI_PROJECT_PATH
-  - chmod +x ./ci/travis.sh
-  - yum install -y elfutils-libelf-devel
-  script:
-  - yum makecache
-  - ./ci/travis.sh
-  tags:
-  - share
-
-branch_build_debug_centos7:
-  stage: build
-  extends: .build_by_travis_for_centos7
-  variables:
-    BUILD_TYPE: Debug
-  except:
-    - /^develop-.*$/i
-    - /^release-.*$/i
-    - tags
-
-branch_build_release_centos7:
-  stage: build
-  variables:
-    BUILD_TYPE: RelWithDebInfo
-  extends: .build_by_travis_for_centos7
-  except:
-    - /^develop-.*$/i
-    - /^release-.*$/i
-    - tags
-
-develop_build_debug_centos7:
-  stage: build
-  extends: .build_by_travis_for_centos7
-  variables:
-    TESTING_VERSION_BUILD: 1
-    #UPLOAD_SYMBOL_FILES: 0
-    BUILD_TYPE: Debug
-    PACKAGE: 1
-    PULP3_REPO_NAME: tsg-testing-x86_64.el7
-    PULP3_DIST_NAME: tsg-testing-x86_64.el7
-  artifacts:
-    name: "hasp-tools-develop-$CI_COMMIT_REF_NAME-debug"
-    paths:
-      - build/*.rpm
-  only:
-    - /^develop-.*$/i
-    - /^release-.*$/i
-
-develop_build_release_centos7:
-  stage: build
-  extends: .build_by_travis_for_centos7
-  variables:
-    TESTING_VERSION_BUILD: 1
-    #UPLOAD_SYMBOL_FILES: 0
-    BUILD_TYPE: RelWithDebInfo
-    PACKAGE: 1
-    PULP3_REPO_NAME: tsg-testing-x86_64.el7
-    PULP3_DIST_NAME: tsg-testing-x86_64.el7
-  artifacts:
-    name: "hasp-tools-develop-$CI_COMMIT_REF_NAME-release"
-    paths:
-      - build/*.rpm
-  only:
-    - /^develop-.*$/i
-    - /^release-.*$/i
-
-release_build_debug_centos7:
-  stage: build
-  variables:
-    #UPLOAD_SYMBOL_FILES: 0
-    BUILD_TYPE: Debug
-    PACKAGE: 1
-    PULP3_REPO_NAME: tsg-stable-x86_64.el7
-    PULP3_DIST_NAME: tsg-stable-x86_64.el7
-  extends: .build_by_travis_for_centos7
-  artifacts:
-    name: "hasp-tools-install-$CI_COMMIT_REF_NAME-debug"
-    paths:
-    - build/*.rpm
-  only:
-    - tags
-
-release_build_release_centos7:
-  stage: build
-  variables:
-    BUILD_TYPE: RelWithDebInfo
-    #UPLOAD_SYMBOL_FILES: 0
-    PACKAGE: 1
-    PULP3_REPO_NAME: tsg-stable-x86_64.el7
-    PULP3_DIST_NAME: tsg-stable-x86_64.el7
-  extends: .build_by_travis_for_centos7
-  artifacts:
-    name: "hasp-tools-install-$CI_COMMIT_REF_NAME-release"
-    paths:
-      - build/*.rpm
-  only:
-    - tags
 
 ###############################################################################
 # compile use image: build-env:rockylinux"
