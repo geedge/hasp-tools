@@ -20,6 +20,13 @@ set(CPACK_RPM_PACKAGE_AUTOREQPROV "no")
 set(CPACK_RPM_PACKAGE_RELEASE_DIST on)
 set(CPACK_RPM_DEBUGINFO_PACKAGE on)
 
+# set RPM architecture
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
+    set(CPACK_RPM_PACKAGE_ARCHITECTURE "aarch64")
+else()
+    set(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
+endif()
+
 # Must uninstall the debug package before install release package
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CPACK_RPM_PACKAGE_CONFLICTS "hasp-tools")

@@ -2,14 +2,22 @@
 add_executable(hasp_update src/hasp_update.c)
 target_include_directories(hasp_update PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include/)
 target_link_libraries(hasp_update pthread)
-target_link_libraries(hasp_update ${CMAKE_SOURCE_DIR}/lib/libhasp_linux_x86_64_25743.a)
+
+# aarch64 or x86_64
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
+    set(HASP_LIB "libhasp_linux_aarch64_25743.a")
+else()
+    set(HASP_LIB "libhasp_linux_x86_64_25743.a")
+endif()
+
+target_link_libraries(hasp_update ${CMAKE_SOURCE_DIR}/lib/${HASP_LIB})
 install(TARGETS hasp_update RUNTIME DESTINATION bin COMPONENT Program)
 
 # compile lib hasp-tools
 add_library(hasp-tools SHARED src/hasp_verify.c)
 target_include_directories(hasp-tools PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 target_link_libraries(hasp-tools pthread rt)
-target_link_libraries(hasp-tools ${CMAKE_SOURCE_DIR}/lib/libhasp_linux_x86_64_25743.a)
+target_link_libraries(hasp-tools ${CMAKE_SOURCE_DIR}/lib/${HASP_LIB})
 install(TARGETS hasp-tools LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/ COMPONENT LIBRARIES)
 install(FILES include/hasp_verify.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include/ COMPONENT LIBRARIES)
 
