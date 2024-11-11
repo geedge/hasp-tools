@@ -5,7 +5,7 @@ target_link_libraries(hasp_update pthread)
 
 # aarch64 or x86_64
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
-    set(HASP_LIB "libhasp_linux_aarch64_25743.a")
+    set(HASP_LIB "libhasp_linux_arm64_25743.a")
 else()
     set(HASP_LIB "libhasp_linux_x86_64_25743.a")
 endif()
