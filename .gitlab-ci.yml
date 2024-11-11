@@ -5,6 +5,9 @@ variables:
   TESTING_VERSION_BUILD: 0
   BUILD_IMAGE_CENTOS7: "git.mesalab.cn:7443/mesa_platform/build-env:master"
   BUILD_IMAGE_CENTOS8: "git.mesalab.cn:7443/mesa_platform/build-env:rockylinux"
+  # aarch64 build image
+  BUILD_IMAGE_ROCKY8_AARCH64: "git.mesalab.cn:7443/mesa_platform/build-env:rocky8-aarch64"
+  BUILD_IMAGE_ROCKY9_AARCH64: "git.mesalab.cn:7443/mesa_platform/build-env:rocky9-aarch64"
 
 stages:
 - build
@@ -214,6 +217,111 @@ release_build_release_centos8:
     PULP3_REPO_NAME: tsg-stable-x86_64.el8
     PULP3_DIST_NAME: tsg-stable-x86_64.el8
   extends: .build_by_travis_for_centos8
+  artifacts:
+    name: "hasp-tools-install-$CI_COMMIT_REF_NAME-release"
+    paths:
+      - build/*.rpm
+  only:
+    - tags
+
+###############################################################################
+# compile use image: rocky9-aarch64
+###############################################################################
+
+.build_by_travis_for_rocky9_aarch64:
+  image: $BUILD_IMAGE_ROCKY9_AARCH64
+  before_script:
+    - mkdir -p $BUILD_PADDING_PREFIX/$CI_PROJECT_NAMESPACE/
+    - ln -s $CI_PROJECT_DIR $BUILD_PADDING_PREFIX/$CI_PROJECT_PATH
+    - cd $BUILD_PADDING_PREFIX/$CI_PROJECT_PATH
+    - chmod +x ./ci/travis.sh
+    - yum install -y elfutils-libelf-devel
+  script:
+    - yum makecache
+    - ./ci/travis.sh
+  tags:
+    - aarch64
+
+# Branch builds for Rocky9 aarch64
+branch_build_debug_rocky9_aarch64:
+  stage: build
+  extends: .build_by_travis_for_rocky9_aarch64
+  variables:
+    BUILD_TYPE: Debug
+  except:
+    - /^develop-.*$/i
+    - /^release-.*$/i
+    - tags
+
+branch_build_release_rocky9_aarch64:
+  stage: build
+  variables:
+    BUILD_TYPE: RelWithDebInfo
+  extends: .build_by_travis_for_rocky9_aarch64
+  except:
+    - /^develop-.*$/i
+    - /^release-.*$/i
+    - tags
+
+# Develop builds for Rocky9 aarch64
+develop_build_debug_rocky9_aarch64:
+  stage: build
+  extends: .build_by_travis_for_rocky9_aarch64
+  variables:
+    TESTING_VERSION_BUILD: 1
+    BUILD_TYPE: Debug
+    PACKAGE: 1
+    PULP3_REPO_NAME: tsg-testing-aarch64.el9
+    PULP3_DIST_NAME: tsg-testing-aarch64.el9
+  artifacts:
+    name: "hasp-tools-develop-$CI_COMMIT_REF_NAME-debug"
+    paths:
+      - build/*.rpm
+  only:
+    - /^develop-.*$/i
+    - /^release-.*$/i
+
+develop_build_release_rocky9_aarch64:
+  stage: build
+  extends: .build_by_travis_for_rocky9_aarch64
+  variables:
+    TESTING_VERSION_BUILD: 1
+    BUILD_TYPE: RelWithDebInfo
+    PACKAGE: 1
+    PULP3_REPO_NAME: tsg-testing-aarch64.el9
+    PULP3_DIST_NAME: tsg-testing-aarch64.el9
+  artifacts:
+    name: "hasp-tools-develop-$CI_COMMIT_REF_NAME-release"
+    paths:
+      - build/*.rpm
+  only:
+    - /^develop-.*$/i
+    - /^release-.*$/i
+
+# Release builds for Rocky9 aarch64
+release_build_debug_rocky9_aarch64:
+  stage: build
+  variables:
+    BUILD_TYPE: Debug
+    PACKAGE: 1
+    PULP3_REPO_NAME: tsg-stable-aarch64.el9
+    PULP3_DIST_NAME: tsg-stable-aarch64.el9
+  extends: .build_by_travis_for_rocky9_aarch64
+  artifacts:
+    name: "hasp-tools-install-$CI_COMMIT_REF_NAME-debug"
+    paths:
+      - build/*.rpm
+  only:
+    - tags
+
+release_build_release_rocky9_aarch64:
+  stage: build
+  variables:
+    BUILD_TYPE: RelWithDebInfo
+    PACKAGE: 1
+    PULP3_REPO_NAME: tsg-stable-aarch64.el9
+    PULP3_DIST_NAME: tsg-stable-aarch64.el9
+  extends: .build_by_travis_for_rocky9_aarch64
   artifacts:
     name: "hasp-tools-install-$CI_COMMIT_REF_NAME-release"
     paths:
