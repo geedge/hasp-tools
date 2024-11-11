@@ -240,7 +240,7 @@ release_build_release_centos8:
     - yum makecache
     - ./ci/travis.sh
   tags:
-    - aarch64
+    - tsg-os-builder-aarch64  # 修改这里以匹配实际的 runner 标签
 
 # Branch builds for Rocky9 aarch64
 branch_build_debug_rocky9_aarch64:
